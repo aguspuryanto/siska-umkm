@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Kasir & Stok UMKM",
+  "description": "Sistem pencatatan penjualan kasir, kelola stok barang, laporan laba rugi, dan cetak invoice PDF untuk UMKM.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
