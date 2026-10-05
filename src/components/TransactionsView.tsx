@@ -19,11 +19,12 @@ interface TransactionsViewProps {
 }
 
 export const TransactionsView: React.FC<TransactionsViewProps> = ({ onViewInvoice }) => {
-  const { transactions, voidTransaction } = useStore();
+  const { transactions, products, categories, voidTransaction } = useStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<'today' | '7days' | 'month' | 'all'>('all');
   const [methodFilter, setMethodFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [voidConfirmTx, setVoidConfirmTx] = useState<Transaction | null>(null);
 
   // Filtered transactions
@@ -54,15 +55,24 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onViewInvoic
       // Method filter
       const matchMethod = methodFilter === 'all' || tx.paymentMethod === methodFilter;
 
+      // Category filter
+      let matchCategory = true;
+      if (categoryFilter !== 'all') {
+        matchCategory = tx.items.some(item => {
+          const p = products.find(prod => prod.id === item.productId);
+          return p && p.category === categoryFilter;
+        });
+      }
+
       // Search query (invoice number or customer name)
       const matchSearch =
         tx.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tx.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tx.cashierName.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchDate && matchMethod && matchSearch;
+      return matchDate && matchMethod && matchCategory && matchSearch;
     });
-  }, [transactions, dateFilter, methodFilter, searchQuery]);
+  }, [transactions, products, dateFilter, methodFilter, categoryFilter, searchQuery]);
 
   // Aggregate stats for filtered transactions
   const activeTx = filteredTransactions.filter(t => t.status !== 'voided');
@@ -233,8 +243,22 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ onViewInvoic
           >
             <option value="all">Semua Metode</option>
             <option value="cash">Tunai (Cash)</option>
-            <option value="qris">QRIS</option>
+            <option value="qris">QRIS (Digital)</option>
             <option value="transfer">Transfer Bank</option>
+          </select>
+
+          {/* Category Filter */}
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-hidden"
+          >
+            <option value="all">Semua Kategori</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.name}>
+                Kategori: {cat.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>

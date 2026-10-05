@@ -3,6 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        try {
+          var _rawFetch = window.fetch;
+          var _fetch = _rawFetch ? function() {
+            return _rawFetch.apply(window, arguments);
+          } : undefined;
+
+          function getFetch() {
+            return _fetch;
+          }
+          function setFetch(fn) {
+            _fetch = fn;
+          }
+
+          try {
+            Object.defineProperty(window, 'fetch', {
+              get: getFetch,
+              set: setFetch,
+              configurable: true,
+              enumerable: true
+            });
+          } catch (e) {}
+
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            try {
+              Object.defineProperty(Window.prototype, 'fetch', {
+                get: getFetch,
+                set: setFetch,
+                configurable: true,
+                enumerable: true
+              });
+            } catch (e) {}
+          }
+        } catch (err) {}
+      })();
+    </script>
     <title>Sistem Kasir & Stok UMKM</title>
     <meta name="description" content="Sistem pencatatan penjualan kasir, kelola stok barang, laporan laba rugi, dan cetak invoice PDF untuk UMKM." />
     <meta property="og:title" content="Sistem Kasir & Stok UMKM" />

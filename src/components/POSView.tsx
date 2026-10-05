@@ -25,7 +25,7 @@ interface POSViewProps {
 }
 
 export const POSView: React.FC<POSViewProps> = ({ onTransactionComplete }) => {
-  const { products, createTransaction } = useStore();
+  const { products, categories, createTransaction, storeProfile } = useStore();
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,14 +40,10 @@ export const POSView: React.FC<POSViewProps> = ({ onTransactionComplete }) => {
   const [cashPaidInput, setCashPaidInput] = useState<string>('');
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
-  // Extract unique categories
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach(p => {
-      if (p.category) set.add(p.category);
-    });
-    return Array.from(set);
-  }, [products]);
+  // Category names list for tabs
+  const categoryNames = useMemo(() => {
+    return categories.map(c => c.name);
+  }, [categories]);
 
   // Filtered products
   const filteredProducts = useMemo(() => {
@@ -239,7 +235,7 @@ export const POSView: React.FC<POSViewProps> = ({ onTransactionComplete }) => {
             >
               Semua Kategori ({products.length})
             </button>
-            {categories.map(cat => {
+            {categoryNames.map(cat => {
               const count = products.filter(p => p.category === cat).length;
               return (
                 <button
@@ -512,58 +508,133 @@ export const POSView: React.FC<POSViewProps> = ({ onTransactionComplete }) => {
             </div>
           </div>
 
-          {/* Cash Payment Details */}
-          {paymentMethod === 'cash' && (
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2 text-xs">
+          {/* QRIS / Digital Payment Details */}
+          {paymentMethod === 'qris' && (
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">Nominal Uang Diterima:</span>
-                <button
-                  type="button"
-                  onClick={handleSetExactCash}
-                  className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 underline"
-                >
-                  Uang Pas ({formatRupiah(total)})
-                </button>
-              </div>
-
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  Rp
+                <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <QrCode className="w-4 h-4 text-emerald-600" />
+                  QRIS Dinamis (Midtrans / Xendit)
                 </span>
-                <input
-                  type="text"
-                  placeholder="0"
-                  value={cashPaidInput}
-                  onChange={e => setCashPaidInput(e.target.value.replace(/[^0-9]/g, ''))}
-                  className="w-full pl-9 pr-3 py-2 text-sm font-bold font-mono text-slate-900 bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-slate-400"
-                />
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono px-2 py-0.5 rounded font-semibold">
+                  API TERHUBUNG
+                </span>
               </div>
 
-              {/* Cash Shortcut Pills */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {[10000, 20000, 50000, 100000, 200000].map(val => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => handleAddPresetCash(val)}
-                    className="px-2 py-1 text-[11px] bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-100 font-mono tabular-nums"
+              {/* QR Code Frame */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 flex flex-col items-center text-center">
+                <div className="w-36 h-36 border-2 border-slate-800 p-2 rounded-lg bg-white relative flex flex-col items-center justify-center">
+                  {/* Decorative QR matrix pattern */}
+                  <svg
+                    viewBox="0 0 100 100"
+                    className="w-full h-full text-slate-900"
+                    fill="currentColor"
                   >
-                    {formatNumber(val)}
-                  </button>
-                ))}
+                    <rect x="0" y="0" width="30" height="30" />
+                    <rect x="4" y="4" width="22" height="22" fill="white" />
+                    <rect x="8" y="8" width="14" height="14" />
+                    <rect x="70" y="0" width="30" height="30" />
+                    <rect x="74" y="4" width="22" height="22" fill="white" />
+                    <rect x="78" y="8" width="14" height="14" />
+                    <rect x="0" y="70" width="30" height="30" />
+                    <rect x="4" y="74" width="22" height="22" fill="white" />
+                    <rect x="8" y="78" width="14" height="14" />
+                    <rect x="40" y="10" width="15" height="10" />
+                    <rect x="45" y="25" width="10" height="15" />
+                    <rect x="40" y="45" width="20" height="20" />
+                    <rect x="70" y="40" width="10" height="20" />
+                    <rect x="85" y="45" width="10" height="15" />
+                    <rect x="15" y="45" width="15" height="10" />
+                    <rect x="40" y="75" width="15" height="15" />
+                    <rect x="65" y="70" width="20" height="10" />
+                    <rect x="75" y="85" width="15" height="15" />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="bg-white px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-900 shadow-xs border border-slate-300">
+                      QRIS
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-2 text-center">
+                  <p className="text-sm font-bold text-slate-900 font-mono tabular-nums">
+                    {formatRupiah(total)}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    NMID: ID1020261908234 · {storeProfile.name}
+                  </p>
+                </div>
               </div>
 
-              {/* Change preview */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs">
-                <span className="text-slate-600">Kembalian:</span>
-                <span
-                  className={`text-sm font-bold font-mono tabular-nums ${
-                    change >= 0 ? 'text-emerald-700' : 'text-red-600'
-                  }`}
-                >
-                  {formatRupiah(change)}
+              {/* Status pulse */}
+              <div className="flex items-center justify-between text-[11px] text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>Menunggu pembayaran pelanggan...</span>
+                </div>
+              </div>
+
+              {/* Instant webhook simulation button */}
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+                className="w-full py-2 px-3 text-xs font-semibold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200/80 border border-emerald-300 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Simulasi Pembayaran Berhasil (Webhook Otomatis)</span>
+              </button>
+            </div>
+          )}
+
+          {/* Transfer Bank Details */}
+          {paymentMethod === 'transfer' && (
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <Building className="w-4 h-4 text-blue-600" />
+                  Transfer Bank / Virtual Account
+                </span>
+                <span className="text-[10px] bg-blue-100 text-blue-800 font-mono px-2 py-0.5 rounded font-semibold">
+                  BCA / MANDIRI
                 </span>
               </div>
+
+              <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Bank:</span>
+                  <span className="font-semibold text-slate-900">BCA (Bank Central Asia)</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">No. Rekening:</span>
+                  <span className="font-mono font-bold text-slate-900 tracking-wider">
+                    8830-9281-2291
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Atas Nama:</span>
+                  <span className="font-semibold text-slate-900">{storeProfile.name}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                  <span className="text-slate-500">Total Transfer:</span>
+                  <span className="font-mono font-bold text-slate-900 text-sm tabular-nums">
+                    {formatRupiah(total)}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+                className="w-full py-2 px-3 text-xs font-semibold text-blue-800 bg-blue-100/80 hover:bg-blue-200/80 border border-blue-300 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle className="w-3.5 h-3.5 text-blue-700" />
+                <span>Konfirmasi Transfer Masuk & Selesaikan</span>
+              </button>
             </div>
           )}
         </div>

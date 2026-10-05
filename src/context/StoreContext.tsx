@@ -6,6 +6,7 @@ import {
   StoreProfile,
   UserAccount,
   CartItem,
+  Category,
 } from '../types';
 import {
   INITIAL_PRODUCTS,
@@ -13,11 +14,13 @@ import {
   INITIAL_STOCK_MOVEMENTS,
   INITIAL_STORE_PROFILE,
   INITIAL_USERS,
+  INITIAL_CATEGORIES,
 } from '../data/initialData';
 import { generateInvoiceNumber } from '../utils/formatters';
 
 interface StoreContextType {
   products: Product[];
+  categories: Category[];
   transactions: Transaction[];
   stockMovements: StockMovement[];
   storeProfile: StoreProfile;
@@ -29,6 +32,11 @@ interface StoreContextType {
   logout: () => void;
   switchUserRole: (role: 'owner' | 'cashier') => void;
   
+  // Category methods
+  addCategory: (name: string) => Category;
+  updateCategory: (id: string, name: string) => void;
+  deleteCategory: (id: string) => void;
+
   // Product methods
   addProduct: (product: Omit<Product, 'id' | 'updatedAt'>) => Product;
   updateProduct: (product: Product) => void;
@@ -58,6 +66,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
   PRODUCTS: 'umkm_pos_products_v1',
+  CATEGORIES: 'umkm_pos_categories_v1',
   TRANSACTIONS: 'umkm_pos_transactions_v1',
   STOCK_MOVEMENTS: 'umkm_pos_stock_movements_v1',
   PROFILE: 'umkm_pos_profile_v1',
@@ -65,6 +74,16 @@ const STORAGE_KEYS = {
 };
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Categories
+  const [categories, setCategories] = useState<Category[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+    } catch {
+      return INITIAL_CATEGORIES;
+    }
+  });
+
   // Products
   const [products, setProducts] = useState<Product[]>(() => {
     try {
@@ -125,6 +144,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [products]);
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
   }, [transactions]);
 
@@ -161,6 +184,50 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const switchUserRole = (role: 'owner' | 'cashier') => {
     const target = users.find(u => u.role === role) || users[0];
     setCurrentUser(target);
+  };
+
+  // Category operations
+  const addCategory = (name: string): Category => {
+    const trimmed = name.trim();
+    const existing = categories.find(c => c.name.toLowerCase() === trimmed.toLowerCase());
+    if (existing) return existing;
+
+    const newCat: Category = {
+      id: 'cat-' + Date.now(),
+      name: trimmed,
+    };
+    setCategories(prev => [...prev, newCat]);
+    return newCat;
+  };
+
+  const updateCategory = (id: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    const oldCat = categories.find(c => c.id === id);
+    if (!oldCat) return;
+
+    setCategories(prev =>
+      prev.map(c => (c.id === id ? { ...c, name: trimmed } : c))
+    );
+
+    // Also update products that have the old category name
+    if (oldCat.name !== trimmed) {
+      setProducts(prev =>
+        prev.map(p => (p.category === oldCat.name ? { ...p, category: trimmed } : p))
+      );
+    }
+  };
+
+  const deleteCategory = (id: string) => {
+    const catToDelete = categories.find(c => c.id === id);
+    if (!catToDelete) return;
+
+    setCategories(prev => prev.filter(c => c.id !== id));
+
+    // Reassign products with deleted category to 'Umum'
+    setProducts(prev =>
+      prev.map(p => (p.category === catToDelete.name ? { ...p, category: 'Umum' } : p))
+    );
   };
 
   // Product operations
@@ -432,6 +499,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const exportDatabaseJSON = (): string => {
     const data = {
       storeProfile,
+      categories,
       products,
       transactions,
       stockMovements,
@@ -443,6 +511,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const importDatabaseJSON = (jsonStr: string): boolean => {
     try {
       const data = JSON.parse(jsonStr);
+      if (data.categories && Array.isArray(data.categories)) {
+        setCategories(data.categories);
+      }
       if (data.products && Array.isArray(data.products)) {
         setProducts(data.products);
       }
@@ -462,6 +533,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const resetToDefaultData = () => {
+    setCategories(INITIAL_CATEGORIES);
     setProducts(INITIAL_PRODUCTS);
     setTransactions(INITIAL_TRANSACTIONS);
     setStockMovements(INITIAL_STOCK_MOVEMENTS);
@@ -474,6 +546,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <StoreContext.Provider
       value={{
         products,
+        categories,
         transactions,
         stockMovements,
         storeProfile,
@@ -482,6 +555,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         login,
         logout,
         switchUserRole,
+        addCategory,
+        updateCategory,
+        deleteCategory,
         addProduct,
         updateProduct,
         deleteProduct,

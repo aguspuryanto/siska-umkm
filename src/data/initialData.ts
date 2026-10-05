@@ -1,4 +1,12 @@
-import { Product, Transaction, StockMovement, StoreProfile, UserAccount } from '../types';
+import { Product, Transaction, StockMovement, StoreProfile, UserAccount, Category } from '../types';
+
+export const INITIAL_CATEGORIES: Category[] = [
+  { id: 'cat-1', name: 'Sembako' },
+  { id: 'cat-2', name: 'Makanan & Mie' },
+  { id: 'cat-3', name: 'Minuman' },
+  { id: 'cat-4', name: 'Bumbu Dapur' },
+  { id: 'cat-5', name: 'Kebutuhan Rumah' },
+];
 
 export const INITIAL_STORE_PROFILE: StoreProfile = {
   name: 'Toko Berkah UMKM',
